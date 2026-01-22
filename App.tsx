@@ -17,7 +17,7 @@ const App: React.FC = () => {
     const fetchUsers = async () => {
       try {
         // เอา ลิงก์-API-URL- ของคุณมาวางแทนที่ข้างล่างนี้ครับ
-        const response = await fetch('https://sheetdb.io/api/v1/h5fvh1h192g0e');
+        const response = await fetch('https://sheetdb.io/api/v1/1kh0wf5fvqs3w');
         const data = await response.json();
         
         // แปลงค่า points ให้เป็นตัวเลข (เพราะข้อมูลจาก Sheets มักจะเป็นตัวหนังสือ)
