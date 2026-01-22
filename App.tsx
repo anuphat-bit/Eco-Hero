@@ -80,31 +80,27 @@ const App: React.FC = () => {
 };
 
 export default App;
-import { db } from './firebase';
-import { collection, addDoc, getDocs } from 'firebase/firestore';
-import { USERS } from './constants'; // ดึงข้อมูลพนักงานจากไฟล์เดิมของคุณ
+import { db } from './firebase'; 
+import { collection, doc, setDoc, getDocs } from 'firebase/firestore';
+import { USERS } from './constants'; // ดึงรายชื่อจากไฟล์ที่คุณมีบน GitHub
 
-// ... ข้างใน Function Component ...
-useEffect(() => {
-  const migrateData = async () => {
-    const querySnapshot = await getDocs(collection(db, "users"));
-    
-    // ตรวจสอบก่อนว่าใน Firebase มีข้อมูลหรือยัง เพื่อป้องกันการเพิ่มซ้ำ
-    if (querySnapshot.empty) {
-      console.log("กำลังย้ายข้อมูลพนักงานไปที่ Firebase...");
-      
-      for (const user of USERS) {
-        await addDoc(collection(db, "users"), {
-          name: user.name,
-          department: user.department,
-          points: user.points,
-          trees: user.trees,
-          email: user.email // ใส่ฟิลด์ตามที่คุณมีใน constants.ts
-        });
-      }
-      console.log("ย้ายข้อมูลสำเร็จ!");
+// ฟังก์ชันสำหรับย้ายข้อมูล (รันแค่ครั้งเดียว)
+const migrateUsersToFirebase = async () => {
+  const querySnapshot = await getDocs(collection(db, "users"));
+  
+  // ถ้าใน Firebase ยังไม่มีข้อมูลพนักงานเลย ให้ทำการย้าย
+  if (querySnapshot.empty) {
+    console.log("Starting Data Migration...");
+    for (const user of USERS) {
+      // ใช้ ID จาก constants.ts (เช่น 'u1', 'u2') เป็น ID ใน Firebase
+      await setDoc(doc(db, "users", user.id), {
+        name: user.name,
+        email: user.email,
+        departmentId: user.departmentId,
+        points: user.points || 0,
+        pin: user.pin
+      });
     }
-  };
-
-  migrateData();
-}, []);
+    console.log("Migration Complete!");
+  }
+};
