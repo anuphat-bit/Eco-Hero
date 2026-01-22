@@ -112,3 +112,17 @@ React.useEffect(() => {
 useEffect(() => {
   migrateUsersToFirebase(); // สั่งให้ทำงานเมื่อเปิดแอป
 }, []);
+// 1. ตรวจสอบว่ามีการนำเข้า React หรือยัง (ถ้ายังไม่มีให้เพิ่มบรรทัดนี้ที่บนสุด)
+import React, { useEffect } from 'react'; 
+
+// ... โค้ดเดิมของคุณ ...
+
+function App() {
+  // 2. เพิ่มโค้ด 3 บรรทัดนี้ลงไปก่อนถึงบรรทัด return
+  useEffect(() => {
+    console.log("Checking migration..."); // เช็คว่า useEffect ทำงานไหม
+    migrateUsersToFirebase();
+  }, []);
+
+  // ... return เดิมของคุณ ...
+}
