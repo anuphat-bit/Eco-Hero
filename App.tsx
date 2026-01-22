@@ -104,3 +104,7 @@ const migrateUsersToFirebase = async () => {
     console.log("Migration Complete!");
   }
 };
+// เพิ่ม useEffect เข้าไปในฟังก์ชัน App
+useEffect(() => {
+  migrateUsersToFirebase(); // สั่งให้ทำงานเมื่อเปิดแอป
+}, []);
