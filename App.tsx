@@ -80,3 +80,31 @@ const App: React.FC = () => {
 };
 
 export default App;
+import { db } from './firebase';
+import { collection, addDoc, getDocs } from 'firebase/firestore';
+import { USERS } from './constants'; // ดึงข้อมูลพนักงานจากไฟล์เดิมของคุณ
+
+// ... ข้างใน Function Component ...
+useEffect(() => {
+  const migrateData = async () => {
+    const querySnapshot = await getDocs(collection(db, "users"));
+    
+    // ตรวจสอบก่อนว่าใน Firebase มีข้อมูลหรือยัง เพื่อป้องกันการเพิ่มซ้ำ
+    if (querySnapshot.empty) {
+      console.log("กำลังย้ายข้อมูลพนักงานไปที่ Firebase...");
+      
+      for (const user of USERS) {
+        await addDoc(collection(db, "users"), {
+          name: user.name,
+          department: user.department,
+          points: user.points,
+          trees: user.trees,
+          email: user.email // ใส่ฟิลด์ตามที่คุณมีใน constants.ts
+        });
+      }
+      console.log("ย้ายข้อมูลสำเร็จ!");
+    }
+  };
+
+  migrateData();
+}, []);
