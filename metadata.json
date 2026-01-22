@@ -1,0 +1,5 @@
+{
+  "name": "Eco-Hero: ปฏิบัติการพิทักษ์กระดาษ",
+  "description": "A gamified application to track and reduce paper usage within an organization. Users log their printing, grow a digital tree, and compete in a friendly department league to promote eco-friendly habits.",
+  "requestFramePermissions": []
+}
