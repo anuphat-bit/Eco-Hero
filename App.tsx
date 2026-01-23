@@ -9,32 +9,37 @@ const App: React.FC = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const departments = INITIAL_DEPARTMENTS;
+  const API_URL = 'https://sheetdb.io/api/v1/1kh0wf5fvqs3w';
 
-  // --- 1. ดึงข้อมูลรายชื่อพนักงานจาก Google Sheets เมื่อเปิดแอป ---
-  useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const response = await fetch('https://sheetdb.io/api/v1/1kh0wf5fvqs3w');
-        const data = await response.json();
-        
-        if (Array.isArray(data)) {
-          const formattedData = data.map((user: any) => ({
-            ...user,
-            points: Number(user.points) || 0,
-            pin: String(user.pin) 
-          }));
-          setUsers(formattedData);
-        }
-      } catch (error) {
-        console.error("ไม่สามารถดึงข้อมูลพนักงานได้:", error);
+  // --- 1. ดึงข้อมูลครั้งแรกเมื่อเปิดแอป ---
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch(API_URL);
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        const formattedData = data.map((user: any) => ({
+          ...user,
+          points: Number(user.points) || 0,
+          pin: String(user.pin) 
+        }));
+        setUsers(formattedData);
+        return formattedData;
       }
-    };
+    } catch (error) {
+      console.error("Fetch error:", error);
+    }
+    return [];
+  };
 
+  useEffect(() => {
     fetchUsers();
   }, []);
 
-  const handleLogin = (userId: string) => {
-    const user = users.find((u) => u.id === userId);
+  // --- 2. แก้ไขระบบ Login ให้ดึงแต้มล่าสุดก่อนเข้าหน้าจอ (แก้ปัญหา PC/มือถือ ไม่ตรงกัน) ---
+  const handleLogin = async (userId: string) => {
+    // ดึงข้อมูลล่าสุดจาก Sheets ก่อน เพื่อให้แน่ใจว่าแต้มอัปเดต
+    const latestUsers = await fetchUsers();
+    const user = latestUsers.find((u) => u.id === userId);
     if (user) {
       setCurrentUser(user);
     }
@@ -44,7 +49,7 @@ const App: React.FC = () => {
     setCurrentUser(null);
   };
 
-  // --- 2. ฟังก์ชันบันทึกคะแนนและส่งกลับไปที่ Google Sheets ---
+  // --- 3. ฟังก์ชันบันทึกคะแนนและส่งกลับไปที่ Google Sheets ---
   const addLog = async (type: LogType, sheets: number) => {
     if (!currentUser) return;
 
@@ -81,37 +86,32 @@ const App: React.FC = () => {
       timestamp: new Date().toISOString(),
     };
 
-    // คำนวณคะแนนรวมใหม่
     const updatedPoints = (currentUser.points || 0) + ecoPoints;
 
     try {
-      // ส่งคำสั่ง PATCH ไปที่ SheetDB เพื่ออัปเดตคะแนนตาม ID
-      await fetch(`https://sheetdb.io/api/v1/1kh0wf5fvqs3w/id/${currentUser.id}`, {
+      // ส่ง PATCH ไปที่ SheetDB
+      await fetch(`${API_URL}/id/${currentUser.id}`, {
         method: 'PATCH',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          data: {
-            points: updatedPoints
-          }
+          data: { points: updatedPoints }
         })
       });
 
-      // อัปเดตสถานะในหน้าจอแอปทันที
+      // อัปเดต State ในแอป
       setLogs((prevLogs) => [...prevLogs, newLogData]);
-      
       setUsers(prevUsers => prevUsers.map(u => 
         u.id === currentUser.id ? { ...u, points: updatedPoints } : u
       ));
-
       setCurrentUser(prev => prev ? { ...prev, points: updatedPoints } : null);
 
       console.log("บันทึกข้อมูลสำเร็จ!");
     } catch (error) {
-      console.error("เกิดข้อผิดพลาดในการบันทึก:", error);
-      alert("ไม่สามารถบันทึกคะแนนลง Google Sheets ได้");
+      console.error("Save error:", error);
+      alert("ไม่สามารถบันทึกคะแนนได้");
     }
   };
 
@@ -124,13 +124,10 @@ const App: React.FC = () => {
     handleLogout
   }), [currentUser, logs, users, departments]);
 
-  // แสดงหน้าจอโหลดข้อมูลถ้ายังดึงรายชื่อไม่เสร็จ
   if (users.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-green-50">
-        <div className="text-xl font-semibold text-green-700 animate-pulse">
-          กำลังโหลดข้อมูลพนักงาน...
-        </div>
+        <div className="text-xl font-semibold text-green-700">กำลังเชื่อมต่อฐานข้อมูล...</div>
       </div>
     );
   }
