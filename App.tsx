@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { User, Department, LogEntry, LogType } from './types';
+import { User, LogEntry, LogType } from './types';
 import { DEPARTMENTS as INITIAL_DEPARTMENTS, ECO_POINTS_CONFIG } from './constants';
 import LoginScreen from './components/LoginScreen';
 import Dashboard from './components/Dashboard';
@@ -11,71 +11,59 @@ const App: React.FC = () => {
   const departments = INITIAL_DEPARTMENTS;
   const API_URL = 'https://sheetdb.io/api/v1/1kh0wf5fvqs3w';
 
-  // --- 1. ดึงข้อมูลครั้งแรกเมื่อเปิดแอป ---
-  const fetchUsers = async () => {
+  // --- 1. ดึงข้อมูลพนักงาน และ ประวัติการบันทึก ทั้งหมดจาก Sheets ---
+  const loadData = async () => {
     try {
-      const response = await fetch(API_URL);
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        const formattedData = data.map((user: any) => ({
-          ...user,
-          points: Number(user.points) || 0,
-          pin: String(user.pin) 
-        }));
-        setUsers(formattedData);
-        return formattedData;
+      // ดึงรายชื่อพนักงาน (Sheet1)
+      const userRes = await fetch(`${API_URL}?t=${Date.now()}`);
+      const userData = await userRes.json();
+      
+      // ดึงประวัติการบันทึก (Sheet logs)
+      const logRes = await fetch(`${API_URL}?sheet=logs&t=${Date.now()}`);
+      const logData = await logRes.json();
+
+      if (Array.isArray(userData)) {
+        setUsers(userData.map((u: any) => ({ ...u, points: Number(u.points) || 0 })));
       }
-    } catch (error) {
-      console.error("Fetch error:", error);
-    }
-    return [];
+      if (Array.isArray(logData)) {
+        // เรียงลำดับเอาอันล่าสุดขึ้นก่อน
+        setLogs(logData.map((l: any) => ({
+          ...l,
+          sheets: Number(l.sheets),
+          paperUsed: Number(l.paperUsed),
+          ecoPoints: Number(l.ecoPoints)
+        })).reverse());
+      }
+    } catch (e) { console.error("Load Data Error:", e); }
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
-  // --- 2. แก้ไขระบบ Login ให้ดึงแต้มล่าสุดก่อนเข้าหน้าจอ (แก้ปัญหา PC/มือถือ ไม่ตรงกัน) ---
   const handleLogin = async (userId: string) => {
-    // ดึงข้อมูลล่าสุดจาก Sheets ก่อน เพื่อให้แน่ใจว่าแต้มอัปเดต
-    const latestUsers = await fetchUsers();
-    const user = latestUsers.find((u) => u.id === userId);
-    if (user) {
-      setCurrentUser(user);
-    }
+    await loadData(); // ดึงข้อมูลล่าสุดอีกครั้งก่อนล็อกอิน
+    const user = users.find((u) => u.id === userId);
+    if (user) setCurrentUser(user);
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-  };
-
-  // --- 3. ฟังก์ชันบันทึกคะแนนและส่งกลับไปที่ Google Sheets ---
+  // --- 2. ฟังก์ชันบันทึกข้อมูล (ส่งไป 2 ที่: อัปเดตคะแนน + เพิ่มประวัติ) ---
   const addLog = async (type: LogType, sheets: number) => {
     if (!currentUser) return;
 
     let paperUsed = 0;
     let ecoPoints = 0;
-    const pointsConfig = ECO_POINTS_CONFIG[type];
-
-    switch (type) {
-      case 'Single-Sided':
-      case 'Copy':
-      case 'Envelope':
-        paperUsed = sheets;
-        ecoPoints = pointsConfig.pointsPerSheet * paperUsed;
-        break;
-      case 'Double-Sided':
-        paperUsed = Math.ceil(sheets / 2);
-        ecoPoints = pointsConfig.pointsPerSheet * paperUsed;
-        break;
-      case 'Digital':
-      case 'Reuse':
-        paperUsed = 0;
-        ecoPoints = pointsConfig.pointsPerSheet * sheets;
-        break;
+    const config = ECO_POINTS_CONFIG[type];
+    
+    // คำนวณตามประเภท (Reuse/Digital = 0 แผ่น)
+    if (type === 'Double-Sided') {
+      paperUsed = Math.ceil(sheets / 2);
+    } else if (type === 'Digital' || type === 'Reuse') {
+      paperUsed = 0;
+    } else {
+      paperUsed = sheets;
     }
+    ecoPoints = config.pointsPerSheet * (type === 'Digital' || type === 'Reuse' ? sheets : paperUsed);
 
-    const newLogData: LogEntry = {
+    const newLogData = {
       id: Date.now().toString(),
       userId: currentUser.id,
       departmentId: currentUser.departmentId,
@@ -89,53 +77,35 @@ const App: React.FC = () => {
     const updatedPoints = (currentUser.points || 0) + ecoPoints;
 
     try {
-      // ส่ง PATCH ไปที่ SheetDB
-      await fetch(`${API_URL}/id/${currentUser.id}`, {
-        method: 'PATCH',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          data: { points: updatedPoints }
-        })
+      // บันทึกลง Sheet logs (POST)
+      await fetch(`${API_URL}?sheet=logs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: [newLogData] })
       });
 
-      // อัปเดต State ในแอป
-      setLogs((prevLogs) => [...prevLogs, newLogData]);
-      setUsers(prevUsers => prevUsers.map(u => 
-        u.id === currentUser.id ? { ...u, points: updatedPoints } : u
-      ));
-      setCurrentUser(prev => prev ? { ...prev, points: updatedPoints } : null);
+      // อัปเดตแต้มพนักงาน (PATCH)
+      await fetch(`${API_URL}/id/${currentUser.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: { points: updatedPoints } })
+      });
 
-      console.log("บันทึกข้อมูลสำเร็จ!");
-    } catch (error) {
-      console.error("Save error:", error);
-      alert("ไม่สามารถบันทึกคะแนนได้");
-    }
+      // อัปเดตหน้าจอทันที
+      setLogs(prev => [newLogData, ...prev]);
+      setCurrentUser(prev => prev ? { ...prev, points: updatedPoints } : null);
+      setUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, points: updatedPoints } : u));
+
+    } catch (e) { alert("บันทึกไม่สำเร็จ กรุณาลองใหม่"); }
   };
 
   const appData = useMemo(() => ({
-    currentUser,
-    logs,
-    users,
-    departments,
-    addLog,
-    handleLogout
-  }), [currentUser, logs, users, departments]);
+    currentUser, logs, users, departments, addLog, handleLogout: () => setCurrentUser(null)
+  }), [currentUser, logs, users]);
 
-  if (users.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-green-50">
-        <div className="text-xl font-semibold text-green-700">กำลังเชื่อมต่อฐานข้อมูล...</div>
-      </div>
-    );
-  }
-
-  if (!currentUser) {
-    return <LoginScreen users={users} departments={departments} onLogin={handleLogin} />;
-  }
-
+  if (users.length === 0) return <div className="min-h-screen flex items-center justify-center">กำลังโหลดข้อมูล...</div>;
+  if (!currentUser) return <LoginScreen users={users} departments={departments} onLogin={handleLogin} />;
+  
   return <Dashboard data={appData} />;
 };
 
