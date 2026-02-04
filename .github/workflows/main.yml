@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ main ] # ตรวจสอบให้แน่ใจว่า Branch ของคุณชื่อ main
+    branches: [ main ]
 
 permissions:
   contents: read
@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
+          # ลบบรรทัด cache ออกแล้วเพื่อให้ผ่าน
 
       - name: Install dependencies
         run: npm install
@@ -31,14 +31,14 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./dist # สำหรับ Vite ไฟล์จะอยู่ที่ dist
+          path: ./dist
 
   deploy:
+    needs: build
+    runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
