@@ -70,7 +70,8 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
         return null;
     }
   };
-const getPageTitle = () => {
+
+  const getPageTitle = () => {
     switch (activeTab) {
       case 'dashboard': return 'แดชบอร์ดสรุปผล';
       case 'department': return 'สถิติฝ่าย';
@@ -84,7 +85,9 @@ const getPageTitle = () => {
     <div className="bg-gray-50 min-h-screen">
       <Header currentUser={data.currentUser} onLogout={data.handleLogout} />
       <main className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-        <div className="flex flex-wrap items-center bg-white rounded-lg shadow-sm p-1 max-w-min mb-6">
+        
+        {/* --- ส่วนเมนูแนวนอนที่แก้ไขใหม่ --- */}
+        <div className="flex overflow-x-auto items-center bg-white rounded-lg shadow-sm p-1 mb-6 no-scrollbar border border-gray-100">
           <TabButton
             icon={<LayoutDashboard size={18} />}
             label="แดชบอร์ด"
@@ -161,9 +164,10 @@ interface TabButtonProps {
 const TabButton: React.FC<TabButtonProps> = ({ icon, label, value, activeTab, setTab }) => (
     <button
         onClick={() => setTab(value)}
-        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors duration-200 ${
+        // เพิ่ม flex-shrink-0 และ whitespace-nowrap เพื่อให้ปุ่มไม่บีบตัวในแนวนอน
+        className={`flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-md transition-all duration-200 flex-shrink-0 whitespace-nowrap ${
             activeTab === value
-                ? 'bg-green-600 text-white shadow'
+                ? 'bg-green-600 text-white shadow-md'
                 : 'text-gray-600 hover:bg-gray-100'
         }`}
     >
@@ -191,6 +195,5 @@ const FilterButton: React.FC<FilterButtonProps> = ({ label, value, activeFilter,
         {label}
     </button>
 );
-
 
 export default Dashboard;
