@@ -117,7 +117,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ users, departments, onLogin }
                 value={pin}
                 onChange={handlePinChange}
                 maxLength={4}
-                placeholder="1234"
+                placeholder=""
                 className={`mt-1 block w-full px-3 py-3 text-center tracking-[0.5em] text-xl font-bold border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:border-transparent ${error ? 'border-red-300 focus:ring-red-500 text-red-900 placeholder-red-300' : 'border-gray-300 focus:ring-green-500 text-gray-900'}`}
               />
               {error && (
@@ -127,7 +127,7 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ users, departments, onLogin }
                 </div>
               )}
               <p className="mt-2 text-xs text-gray-400 text-center">
-                *รหัสเริ่มต้นคือ 1234
+                
               </p>
             </div>
           )}
