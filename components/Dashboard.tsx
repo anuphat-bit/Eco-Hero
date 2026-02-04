@@ -71,14 +71,13 @@ const Dashboard: React.FC<DashboardProps> = ({ data }) => {
     }
   };
 
-  const getPageTitle = () => {
-    switch (activeTab) {
-      case 'dashboard': return 'แดชบอร์ดสรุปผล';
-      case 'department': return 'สถิติฝ่าย';
-      case 'league': return 'ลีกการแข่งขัน';
-      case 'history': return 'ประวัติการใช้งาน';
-      default: return '';
-    }
+ {/* เพิ่ม flex และ overflow-x-auto เพื่อให้เลื่อนซ้ายขวาได้ในมือถือ */}
+<div className="flex overflow-x-auto gap-4 pb-4 no-scrollbar">
+  <button className="flex-shrink-0 w-32 ...">สถิติฝ่าย</button>
+  <button className="flex-shrink-0 w-32 ...">คลังเหรียญ</button>
+  <button className="flex-shrink-0 w-32 ...">ประวัติ</button>
+  <button className="flex-shrink-0 w-32 ...">อันดับ</button>
+</div>
   };
 
   return (
